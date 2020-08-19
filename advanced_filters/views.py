@@ -3,19 +3,21 @@ import logging
 from django.apps import apps
 from django.conf import settings
 from django.contrib.admin.utils import get_fields_from_path
+from django.contrib.admin.views.decorators import staff_member_required
 from django.db import models
 from django.db.models.fields import FieldDoesNotExist
+from django.http import JsonResponse
+from django.utils.decorators import method_decorator
 from django.utils.encoding import force_str
+from django.views.decorators.csrf import csrf_exempt
 from django.views.generic import View
-
-from braces.views import (CsrfExemptMixin, StaffuserRequiredMixin,
-                          JSONResponseMixin)
 
 logger = logging.getLogger('advanced_filters.views')
 
 
-class GetFieldChoices(CsrfExemptMixin, StaffuserRequiredMixin,
-                      JSONResponseMixin, View):
+@method_decorator(csrf_exempt, name="dispatch")
+@method_decorator(staff_member_required, name="dispatch")
+class GetFieldChoices(View):
     """
     A JSONResponse view that accepts a model and a field (path to field),
     resolves and returns the valid choices for that field.
@@ -26,6 +28,12 @@ class GetFieldChoices(CsrfExemptMixin, StaffuserRequiredMixin,
     ADVANCED_FILTERS_DISABLE_FOR_FIELDS and limited to display only results
     under ADVANCED_FILTERS_MAX_CHOICES.
     """
+    def render_json_response(self, context_dict, **response_kwargs):
+        return JsonResponse(
+            context_dict,
+            **response_kwargs
+        )
+
     def get(self, request, model=None, field_name=None):
         if model is field_name is None:
             return self.render_json_response(
